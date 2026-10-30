@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Run Gitleaks
-        run: docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest detect --no-git --source /repo --redact -v
+        run: docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest detect --no-git --source /repo --redact -v --config /repo/.gitleaks.toml
 
   sast:
     name: SAST (Semgrep)
