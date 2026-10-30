@@ -9,7 +9,7 @@ on:
 permissions:
   contents: read
   packages: write
-  id-token: write # Required for Cosign keyless signing
+  id-token: write
 
 jobs:
   secrets-scan:
@@ -47,11 +47,13 @@ jobs:
   build-and-sign:
     name: Build, SBOM & Sign
     runs-on: ubuntu-latest
-    # ONLY run this on the fixed branch
     if: github.ref == 'refs/heads/fixed'
     needs: [secrets-scan, sast, dependency-scan, dockerfile-lint]
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set lowercase image tag
+        run: echo "IMAGE_TAG=ghcr.io/$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')/notes-api:latest" >> $GITHUB_ENV
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -68,19 +70,19 @@ jobs:
         with:
           context: ./app/notes-api
           push: true
-          tags: ghcr.io/${{ github.repository }}/notes-api:latest
+          tags: ${{ env.IMAGE_TAG }}
 
       - name: Generate SBOM (Syft)
         uses: anchore/sbom-action@v0
         with:
-          image: ghcr.io/${{ github.repository }}/notes-api:latest
+          image: ${{ env.IMAGE_TAG }}
           format: spdx-json
           output-file: sbom.spdx.json
 
       - name: Scan Image (Grype)
         uses: anchore/scan-action@v3
         with:
-          image: ghcr.io/${{ github.repository }}/notes-api:latest
+          image: ${{ env.IMAGE_TAG }}
           fail-build: true
           severity-cutoff: critical
 
@@ -88,4 +90,4 @@ jobs:
         uses: sigstore/cosign-installer@v3.5.0
 
       - name: Sign the published image (Keyless)
-        run: cosign sign --yes ghcr.io/${{ github.repository }}/notes-api:latest
+        run: cosign sign --yes ${{ env.IMAGE_TAG }}
