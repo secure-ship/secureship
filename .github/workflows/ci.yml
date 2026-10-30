@@ -80,7 +80,7 @@ jobs:
           output-file: sbom.spdx.json
 
       - name: Scan Image (Grype)
-        uses: anchore/scan-action@v3
+        uses: anchore/scan-action@v6
         with:
           image: ${{ env.IMAGE_TAG }}
           fail-build: true
