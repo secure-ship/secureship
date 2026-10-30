@@ -1,0 +1,43 @@
+name: secureship-ci
+
+on:
+  push:
+    branches: [vulnerable, fixed]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  secrets-scan:
+    name: Secrets (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Gitleaks
+        run: docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest detect --no-git --source /repo --redact -v
+
+  sast:
+    name: SAST (Semgrep)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Semgrep
+        run: docker run --rm -v "$PWD:/src" -w /src semgrep/semgrep semgrep scan --config p/java --config p/owasp-top-ten --error app/notes-api/src
+
+  dependency-scan:
+    name: Dependencies (Trivy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Trivy
+        run: docker run --rm -v "$PWD:/work" aquasec/trivy:latest fs --scanners vuln --severity HIGH,CRITICAL --exit-code 1 /work/app/notes-api
+
+  dockerfile-lint:
+    name: Dockerfile (Hadolint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Hadolint
+        run: docker run --rm -i hadolint/hadolint hadolint --failure-threshold warning - < app/notes-api/Dockerfile
