@@ -7,6 +7,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
@@ -20,22 +21,24 @@ public class NotesController {
     }
 
     @GetMapping("/")
-    public String index(Model model) {
-        model.addAttribute("notes",
-            jdbc.queryForList("SELECT id, owner, title, content FROM notes ORDER BY id DESC"));
+    public String index() {
         return "index";
     }
 
-    @PostMapping("/notes")
-    public String add(@RequestParam String owner, @RequestParam String title,
-                      @RequestParam String content) {
+    @PostMapping("/api/notes")
+    @ResponseBody
+    public Map<String, String> add(@RequestBody Map<String, String> request) {
+        String owner = request.get("owner");
+        String title = request.get("title");
+        String content = request.get("content");
+        
         jdbc.update("INSERT INTO notes(owner, title, content) VALUES (?, ?, ?)", owner, title, content);
-        return "redirect:/";
+        return Map.of("status", "success");
     }
 
     @GetMapping("/api/notes/search")
     @ResponseBody
-    public List<Map<String, Object>> search(@RequestParam String q) {
+    public List<Map<String, Object>> search(@RequestParam(required = false, defaultValue = "") String q) {
         // FIXED VULN 2: Parameterized query prevents SQL injection
         String sql = "SELECT id, owner, title, content FROM notes WHERE title LIKE ?";
         return jdbc.queryForList(sql, "%" + q + "%");

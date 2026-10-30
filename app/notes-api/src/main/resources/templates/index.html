@@ -1,25 +1,119 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head><meta charset="UTF-8"><title>Notes</title></head>
+<head>
+    <meta charset="UTF-8">
+    <title>Secure Notes API</title>
+    <style>
+        body { font-family: sans-serif; margin: 40px; }
+        .container { max-width: 600px; margin: auto; }
+        .box { border: 1px solid #ccc; padding: 20px; margin-bottom: 20px; border-radius: 5px; }
+        input, button { padding: 8px; margin: 5px 0; width: 100%; box-sizing: border-box; }
+        button { background-color: #007bff; color: white; border: none; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        #notes-list { list-style-type: none; padding: 0; }
+        #notes-list li { border-bottom: 1px solid #eee; padding: 10px 0; }
+    </style>
+</head>
 <body>
-  <h1>Notes</h1>
-  <form method="post" action="/notes">
-    <input name="owner" placeholder="Owner" required>
-    <input name="title" placeholder="Title" required>
-    <input name="content" placeholder="Content" required>
-    <button type="submit">Add</button>
-  </form>
-  <form method="get" action="/api/notes/search">
-    <input name="q" placeholder="Search by title">
-    <button type="submit">Search</button>
-  </form>
+<div class="container">
+    <h1>Secure Notes</h1>
 
-  <ul>
-    <li th:each="n : ${notes}">
-      <!-- FIXED VULN 3: th:text escapes HTML to prevent XSS -->
-      <b th:text="${n.title}"></b> by <span th:text="${n.owner}"></span>:
-      <span th:text="${n.content}"></span>
-    </li>
-  </ul>
+    <!-- Login Section -->
+    <div class="box" id="login-section">
+        <h2>Login</h2>
+        <input type="text" id="username" placeholder="Username">
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="login()">Login</button>
+        <p id="login-status" style="color: red;"></p>
+    </div>
+
+    <!-- Notes Section (Hidden by default) -->
+    <div class="box" id="notes-section" style="display: none;">
+        <h2>Add a Note</h2>
+        <input type="text" id="note-owner" placeholder="Owner" value="admin">
+        <input type="text" id="note-title" placeholder="Title">
+        <input type="text" id="note-content" placeholder="Content">
+        <button onclick="addNote()">Add Note</button>
+        <button onclick="loadNotes()" style="background-color: #28a745; margin-top: 10px;">Refresh Notes</button>
+
+        <h3>Your Notes:</h3>
+        <ul id="notes-list"></ul>
+    </div>
+</div>
+
+<script>
+    let jwtToken = localStorage.getItem('jwtToken');
+
+    // If token exists, show notes section
+    if (jwtToken) {
+        document.getElementById('login-section').style.display = 'none';
+        document.getElementById('notes-section').style.display = 'block';
+        loadNotes();
+    }
+
+    async function login() {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+
+        const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            jwtToken = data.token;
+            localStorage.setItem('jwtToken', jwtToken);
+            document.getElementById('login-section').style.display = 'none';
+            document.getElementById('notes-section').style.display = 'block';
+            loadNotes();
+        } else {
+            document.getElementById('login-status').innerText = "Invalid credentials!";
+        }
+    }
+
+    async function loadNotes() {
+        const response = await fetch('/api/notes/search?q=', {
+            headers: { 'Authorization': 'Bearer ' + jwtToken }
+        });
+        if (response.ok) {
+            const notes = await response.json();
+            const list = document.getElementById('notes-list');
+            list.innerHTML = '';
+            notes.forEach(n => {
+                const li = document.createElement('li');
+                // Using textContent to prevent XSS!
+                li.textContent = `${n.title} by ${n.owner}: ${n.content}`;
+                list.appendChild(li);
+            });
+        } else {
+            alert("Session expired or unauthorized. Please login again.");
+            localStorage.removeItem('jwtToken');
+            location.reload();
+        }
+    }
+
+    async function addNote() {
+        const owner = document.getElementById('note-owner').value;
+        const title = document.getElementById('note-title').value;
+        const content = document.getElementById('note-content').value;
+
+        const response = await fetch('/api/notes', {
+            method: 'POST',
+            headers: { 
+                'Authorization': 'Bearer ' + jwtToken,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ owner, title, content })
+        });
+        
+        if (response.ok) {
+            loadNotes(); // Refresh the list
+        } else {
+            alert("Failed to add note. Are you logged in?");
+        }
+    }
+</script>
 </body>
 </html>
