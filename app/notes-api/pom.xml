@@ -65,11 +65,12 @@
 			<scope>test</scope>
 		</dependency>
 
-		<!-- VULN 4: Outdated vulnerable dependency (CVE-2022-42889) -->
+<!-- VULN 4: Outdated vulnerable dependency (CVE-2022-42889) -->
+<!-- FIXED VULN 4: Upgraded to secure version -->
 		<dependency>
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-text</artifactId>
-			<version>1.9</version>
+			<version>1.10.0</version>
 		</dependency>
 	</dependencies>
 

@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 public class NotesController {
 
     // VULN 1: hardcoded secret (fake key, but real-looking format)
-    private static final String API_KEY = "AKIAZ5Q7X2M4K5R3T6WB";
+    //private static final String API_KEY = "AKIAZ5Q7X2M4K5R3T6WB";
 
     private final JdbcTemplate jdbc;
 
@@ -36,11 +36,19 @@ public class NotesController {
         return "redirect:/";
     }
 
+    //@GetMapping("/api/notes/search")
+    //@ResponseBody
+    //public List<Map<String, Object>> search(@RequestParam String q) {
+        // VULN 2: SQL injection (user input concatenated into the query)
+    //    String sql = "SELECT id, owner, title, content FROM notes WHERE title LIKE '%" + q + "%'";
+    //    return jdbc.queryForList(sql);
+    //}
+    
     @GetMapping("/api/notes/search")
     @ResponseBody
     public List<Map<String, Object>> search(@RequestParam String q) {
-        // VULN 2: SQL injection (user input concatenated into the query)
-        String sql = "SELECT id, owner, title, content FROM notes WHERE title LIKE '%" + q + "%'";
-        return jdbc.queryForList(sql);
+        // FIXED VULN 2: Parameterized query prevents SQL injection
+        String sql = "SELECT id, owner, title, content FROM notes WHERE title LIKE ?";
+        return jdbc.queryForList(sql, "%" + q + "%");
     }
 }

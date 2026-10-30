@@ -13,11 +13,12 @@
     <input name="q" placeholder="Search by title">
     <button type="submit">Search</button>
   </form>
+
   <ul>
     <li th:each="n : ${notes}">
-      <!-- VULN 3: th:utext does not escape HTML (stored XSS) -->
-      <b th:utext="${n.title}"></b> by <span th:text="${n.owner}"></span>:
-      <span th:utext="${n.content}"></span>
+      <!-- FIXED VULN 3: th:text escapes HTML to prevent XSS -->
+      <b th:text="${n.title}"></b> by <span th:text="${n.owner}"></span>:
+      <span th:text="${n.content}"></span>
     </li>
   </ul>
 </body>
