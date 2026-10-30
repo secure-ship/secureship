@@ -31,8 +31,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - name: Resolve Maven dependencies
+        working-directory: app/notes-api
+        run: mvn dependency:go-offline
       - name: Run Trivy
-        run: docker run --rm -v "$PWD:/work" aquasec/trivy:latest fs --scanners vuln --severity HIGH,CRITICAL --exit-code 1 /work/app/notes-api
+        run: docker run --rm -v "$PWD:/work" -v "$HOME/.m2:/root/.m2" aquasec/trivy:latest fs --scanners vuln --severity HIGH,CRITICAL --exit-code 1 --offline-scan /work/app/notes-api
 
   dockerfile-lint:
     name: Dockerfile (Hadolint)
