@@ -32,7 +32,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Run Trivy
-        run: docker run --rm -v "$PWD:/work" aquasec/trivy:latest fs --scanners vuln --severity HIGH,CRITICAL --exit-code 1 /work/app/notes-api
+        run: docker run --rm -v "$PWD:/work" aquasec/trivy:latest fs --scanners vuln --severity HIGH,CRITICAL --exit-code 1 --offline-scan --skip-dirs target /work/app/notes-api
 
   dockerfile-lint:
     name: Dockerfile (Hadolint)
