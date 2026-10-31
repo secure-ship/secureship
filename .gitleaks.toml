@@ -1,5 +1,0 @@
-[allowlist]
-description = "Ignore fake AWS key used for demo"
-regexes = [
-    '''AKIAZ5Q7X2M4K5R3T6WB'''
-]
