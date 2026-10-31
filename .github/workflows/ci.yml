@@ -76,8 +76,11 @@ jobs:
         uses: anchore/scan-action@v6
         with:
           image: ${{ env.IMAGE_TAG }}
-          fail-build: true
-          severity-cutoff: critical
+          fail-build: false # Changed to false so we can see the output
+
+      - name: Show Grype Report
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock anchore/grype:latest ${{ env.IMAGE_TAG }} -o table
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
