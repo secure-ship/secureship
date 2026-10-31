@@ -18,3 +18,4 @@ jobs:
       app-path: "app/notes-api"
       image-name: "notes-api"
       severity-cutoff: "CRITICAL"
+      build-branch: "fixed"

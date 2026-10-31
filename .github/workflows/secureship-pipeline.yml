@@ -13,6 +13,10 @@ on:
         required: false
         default: "CRITICAL"
         type: string
+      build-branch:
+        required: false
+        default: "main"
+        type: string
 
 permissions:
   contents: read
@@ -55,7 +59,7 @@ jobs:
   build-and-sign:
     name: Build, SBOM & Sign
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/fixed'
+    if: github.ref_name == inputs.build-branch
     needs: [secrets-scan, sast, dependency-scan, dockerfile-lint]
     steps:
       - uses: actions/checkout@v4
