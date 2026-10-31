@@ -10,6 +10,8 @@ RUN ./mvnw clean package -DskipTests
 
 # Stage 2: Run the application securely
 FROM eclipse-temurin:17-jre-alpine
+# Patch Alpine system packages to fix CVE-2026-111497 in brotli-libs
+RUN apk update && apk upgrade --no-cache && rm -rf /var/cache/apk/*
 RUN addgroup -S app && adduser -S app -G app
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
