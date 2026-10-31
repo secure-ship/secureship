@@ -2,7 +2,7 @@
 
 Gate: the pipeline fails on CRITICAL findings (`--fail-on critical`).
 
-Image: `ghcr.io/secure-ship/secureship/notes-api@sha256:06103e5f1c790d6c4f2b4a82e31c28baf85c490763e47c8c8a36b4a6376d6c38`
+Image: `ghcr.io/secure-ship/secureship/notes-api@sha256:a7ec6d42728fc7763450c030c40d3a3281ad3a8839470d15c57614093d06055a`
 
 | Package | CVE | Severity | Status |
 |---|---|---|---|
@@ -12,4 +12,4 @@ Image: `ghcr.io/secure-ship/secureship/notes-api@sha256:06103e5f1c790d6c4f2b4a82
 
 Planned mitigation: distroless runtime image to remove these packages.
 
-Verification: cosign signature checked against workflow ci.yml on refs/heads/fixed (Rekor index 3614329725).
+Verification: cosign signature checked against workflow secureship-pipeline.yml on refs/heads/fixed (Rekor index 3614329725).
