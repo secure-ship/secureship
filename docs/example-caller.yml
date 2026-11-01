@@ -1,0 +1,8 @@
+# Copy this file to .github/workflows/secureship.yml in your repository
+name: secureship
+on: [push, pull_request]
+permissions: { contents: read, packages: write, id-token: write, security-events: write }
+jobs:
+  secureship:
+    uses: secure-ship/secureship/.github/workflows/secureship-pipeline.yml@v1.0.0
+    with: { app-path: ".", image-name: "my-app", build-branch: "main" }
