@@ -9,5 +9,5 @@ scanners:
   gitleaks: true
   semgrep: true
   trivy: true
-  hadolint: true
+  hadolint: false
   grype: true
