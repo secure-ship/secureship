@@ -45,6 +45,58 @@ permissions:
   security-events: write
 
 jobs:
+  config:
+    name: Load config
+    runs-on: ubuntu-latest
+    outputs:
+      app-path: ${{ steps.cfg.outputs.app-path }}
+      image-name: ${{ steps.cfg.outputs.image-name }}
+      severity-cutoff: ${{ steps.cfg.outputs.severity-cutoff }}
+      build-branch: ${{ steps.cfg.outputs.build-branch }}
+      run-gitleaks: ${{ steps.cfg.outputs.run-gitleaks }}
+      run-semgrep: ${{ steps.cfg.outputs.run-semgrep }}
+      run-trivy: ${{ steps.cfg.outputs.run-trivy }}
+      run-hadolint: ${{ steps.cfg.outputs.run-hadolint }}
+      run-grype: ${{ steps.cfg.outputs.run-grype }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve options (input > secureship.yml > default)
+        id: cfg
+        env:
+          IN_APP_PATH: ${{ inputs.app-path }}
+          IN_IMAGE_NAME: ${{ inputs.image-name }}
+          IN_SEVERITY: ${{ inputs.severity-cutoff }}
+          IN_BUILD_BRANCH: ${{ inputs.build-branch }}
+          IN_GITLEAKS: ${{ inputs.run-gitleaks }}
+          IN_SEMGREP: ${{ inputs.run-semgrep }}
+          IN_TRIVY: ${{ inputs.run-trivy }}
+          IN_HADOLINT: ${{ inputs.run-hadolint }}
+          IN_GRYPE: ${{ inputs.run-grype }}
+        run: |
+          fileval() {
+            [ -f secureship.yml ] || return 0
+            v=$(yq "$1" secureship.yml)
+            [ "$v" = "null" ] && v=""
+            echo "$v"
+          }
+          pick() {
+            if [ -n "$1" ]; then echo "$1"; return; fi
+            f=$(fileval "$2")
+            if [ -n "$f" ]; then echo "$f"; else echo "$3"; fi
+          }
+          {
+            echo "app-path=$(pick "$IN_APP_PATH" '.app-path' '.')"
+            echo "image-name=$(pick "$IN_IMAGE_NAME" '.image-name' 'app')"
+            echo "severity-cutoff=$(pick "$IN_SEVERITY" '.severity-cutoff' 'CRITICAL')"
+            echo "build-branch=$(pick "$IN_BUILD_BRANCH" '.build-branch' 'main')"
+            echo "run-gitleaks=$(pick "$IN_GITLEAKS" '.scanners.gitleaks' 'true')"
+            echo "run-semgrep=$(pick "$IN_SEMGREP" '.scanners.semgrep' 'true')"
+            echo "run-trivy=$(pick "$IN_TRIVY" '.scanners.trivy' 'true')"
+            echo "run-hadolint=$(pick "$IN_HADOLINT" '.scanners.hadolint' 'true')"
+            echo "run-grype=$(pick "$IN_GRYPE" '.scanners.grype' 'true')"
+          } | tee -a "$GITHUB_OUTPUT"
+
   secrets-scan:
     name: Secrets (Gitleaks)
     runs-on: ubuntu-latest
