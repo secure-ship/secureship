@@ -1,10 +1,10 @@
 # SecureShip pipeline configuration
 # Priority: values in the caller's workflow `with:` block win over this file;
 # anything missing here falls back to the pipeline's built-in default.
-app-path: app/notes-api
-image-name: notes-api
+app-path: .
+image-name: my-app
 severity-cutoff: HIGH
-build-branch: fixed
+build-branch: main
 scanners:
   gitleaks: true
   semgrep: true
