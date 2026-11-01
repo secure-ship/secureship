@@ -29,7 +29,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Run Gitleaks
+      - name: Gitleaks JSON report
+        run: |
+          mkdir -p reports
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest detect --no-git --source /repo --redact --exit-code 0 --report-format json --report-path /repo/reports/gitleaks.json
+
+      - name: Upload Gitleaks report
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitleaks-report
+          path: reports/gitleaks.json
+
+      - name: Run Gitleaks (gate)
         run: docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest detect --no-git --source /repo --redact -v
 
   sast:
