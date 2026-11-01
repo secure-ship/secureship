@@ -86,7 +86,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Run Hadolint
+      - name: Hadolint JSON report
+        run: |
+          mkdir -p reports
+          docker run --rm -i hadolint/hadolint hadolint --format json - < ${{ inputs.app-path }}/Dockerfile > reports/hadolint.json || true
+
+      - name: Upload Hadolint report
+        uses: actions/upload-artifact@v4
+        with:
+          name: hadolint-report
+          path: reports/hadolint.json
+
+      - name: Run Hadolint (gate)
         run: docker run --rm -i hadolint/hadolint hadolint --failure-threshold warning - < ${{ inputs.app-path }}/Dockerfile
 
   build-and-sign:
