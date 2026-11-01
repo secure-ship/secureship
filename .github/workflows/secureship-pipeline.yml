@@ -45,7 +45,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Run Trivy
+      - name: Trivy JSON report
+        run: |
+          mkdir -p reports
+          docker run --rm -v "$PWD:/work" aquasec/trivy:latest fs --scanners vuln,misconfig --severity HIGH,CRITICAL --exit-code 0 --offline-scan --skip-dirs target --format json --output /work/reports/trivy-deps.json /work/${{ inputs.app-path }}
+
+      - name: Upload Trivy report
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-deps-report
+          path: reports/trivy-deps.json
+
+      - name: Run Trivy (gate)
         run: docker run --rm -v "$PWD:/work" aquasec/trivy:latest fs --scanners vuln,misconfig --severity HIGH,CRITICAL --exit-code 1 --offline-scan --skip-dirs target /work/${{ inputs.app-path }}
 
   dockerfile-lint:
