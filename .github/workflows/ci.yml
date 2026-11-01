@@ -20,4 +20,3 @@ jobs:
       image-name: "notes-api"
       severity-cutoff: "HIGH"
       build-branch: "fixed"
-      run-hadolint: false
