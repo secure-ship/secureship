@@ -67,8 +67,7 @@ jobs:
       - name: Set image tags
         run: |
           REPO_LOWER=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')
-          echo "IMAGE_TAG=ghcr.io/$REPO_LOWER/${{ inputs.image-name }}:latest" >> $GITHUB_ENV
-          echo "IMAGE_TAG_SHA=ghcr.io/$REPO_LOWER/${{ inputs.image-name }}:${{ github.sha }}" >> $GITHUB_ENV
+          echo "IMAGE_TAG=ghcr.io/$REPO_LOWER/${{ inputs.image-name }}:${{ github.sha }}" >> $GITHUB_ENV
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -82,7 +81,6 @@ jobs:
           load: true
           tags: |
             ${{ env.IMAGE_TAG }}
-            ${{ env.IMAGE_TAG_SHA }}
 
       - name: Scan Local Image (Grype)
         run: |
@@ -99,7 +97,6 @@ jobs:
       - name: Push Docker Images
         run: |
           docker push ${{ env.IMAGE_TAG }}
-          docker push ${{ env.IMAGE_TAG_SHA }}
 
       - name: Get Image Digest
         run: |
