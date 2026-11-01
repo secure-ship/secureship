@@ -88,10 +88,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Map severity cutoff for Trivy
+        run: |
+          case "${{ inputs.severity-cutoff }}" in
+            CRITICAL) echo "TRIVY_SEV=CRITICAL" >> $GITHUB_ENV ;;
+            HIGH) echo "TRIVY_SEV=HIGH,CRITICAL" >> $GITHUB_ENV ;;
+            MEDIUM) echo "TRIVY_SEV=MEDIUM,HIGH,CRITICAL" >> $GITHUB_ENV ;;
+            *) echo "TRIVY_SEV=LOW,MEDIUM,HIGH,CRITICAL" >> $GITHUB_ENV ;;
+          esac
+
       - name: Trivy JSON report
         run: |
           mkdir -p reports
-          docker run --rm -v "$PWD:/work" aquasec/trivy:latest fs --scanners vuln,misconfig --severity HIGH,CRITICAL --exit-code 0 --offline-scan --skip-dirs target --format json --output /work/reports/trivy-deps.json /work/${{ inputs.app-path }}
+          docker run --rm -v "$PWD:/work" aquasec/trivy:latest fs --scanners vuln,misconfig --severity ${{ env.TRIVY_SEV }} --exit-code 0 --offline-scan --skip-dirs target --format json --output /work/reports/trivy-deps.json /work/${{ inputs.app-path }}
 
       - name: Upload Trivy report
         uses: actions/upload-artifact@v4
@@ -101,7 +110,7 @@ jobs:
 
       - name: Trivy SARIF report
         run: |
-          docker run --rm -v "$PWD:/work" aquasec/trivy:latest fs --scanners vuln,misconfig --severity HIGH,CRITICAL --exit-code 0 --offline-scan --skip-dirs target --format sarif --output /work/reports/trivy-deps.sarif /work/${{ inputs.app-path }}
+          docker run --rm -v "$PWD:/work" aquasec/trivy:latest fs --scanners vuln,misconfig --severity ${{ env.TRIVY_SEV }} --exit-code 0 --offline-scan --skip-dirs target --format sarif --output /work/reports/trivy-deps.sarif /work/${{ inputs.app-path }}
 
       - name: Upload Trivy SARIF to Code Scanning
         uses: github/codeql-action/upload-sarif@v3
@@ -110,7 +119,7 @@ jobs:
           category: trivy-deps
 
       - name: Run Trivy (gate)
-        run: docker run --rm -v "$PWD:/work" aquasec/trivy:latest fs --scanners vuln,misconfig --severity HIGH,CRITICAL --exit-code 1 --offline-scan --skip-dirs target /work/${{ inputs.app-path }}
+        run: docker run --rm -v "$PWD:/work" aquasec/trivy:latest fs --scanners vuln,misconfig --severity ${{ env.TRIVY_SEV }} --exit-code 1 --offline-scan --skip-dirs target /work/${{ inputs.app-path }}
 
   dockerfile-lint:
     name: Dockerfile (Hadolint)
