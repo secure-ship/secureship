@@ -22,6 +22,7 @@ permissions:
   contents: read
   packages: write
   id-token: write
+  security-events: write
 
 jobs:
   secrets-scan:
@@ -29,7 +30,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Run Gitleaks
+      - name: Gitleaks JSON report
+        run: |
+          mkdir -p reports
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest detect --no-git --source /repo --redact --exit-code 0 --report-format json --report-path /repo/reports/gitleaks.json
+
+      - name: Upload Gitleaks report
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitleaks-report
+          path: reports/gitleaks.json
+
+      - name: Gitleaks SARIF report
+        run: |
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest detect --no-git --source /repo --redact --exit-code 0 --report-format sarif --report-path /repo/reports/gitleaks.sarif
+
+      - name: Upload Gitleaks SARIF to Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: reports/gitleaks.sarif
+          category: gitleaks
+
+      - name: Run Gitleaks (gate)
         run: docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest detect --no-git --source /repo --redact -v
 
   sast:
@@ -37,7 +59,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Run Semgrep
+      - name: Semgrep JSON report
+        run: |
+          mkdir -p reports
+          docker run --rm -v "$PWD:/src" -w /src semgrep/semgrep semgrep scan --config p/java --config p/owasp-top-ten --json --output /src/reports/semgrep.json ${{ inputs.app-path }}/src
+
+      - name: Upload Semgrep report
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-report
+          path: reports/semgrep.json
+
+      - name: Semgrep SARIF report
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src semgrep/semgrep semgrep scan --config p/java --config p/owasp-top-ten --sarif --output /src/reports/semgrep.sarif ${{ inputs.app-path }}/src
+
+      - name: Upload Semgrep SARIF to Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: reports/semgrep.sarif
+          category: semgrep
+
+      - name: Run Semgrep (gate)
         run: docker run --rm -v "$PWD:/src" -w /src semgrep/semgrep semgrep scan --config p/java --config p/owasp-top-ten --error ${{ inputs.app-path }}/src
 
   dependency-scan:
@@ -45,15 +88,66 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Run Trivy
-        run: docker run --rm -v "$PWD:/work" aquasec/trivy:latest fs --scanners vuln,misconfig --severity HIGH,CRITICAL --exit-code 1 --offline-scan --skip-dirs target /work/${{ inputs.app-path }}
+      - name: Map severity cutoff for Trivy
+        run: |
+          case "${{ inputs.severity-cutoff }}" in
+            CRITICAL) echo "TRIVY_SEV=CRITICAL" >> $GITHUB_ENV ;;
+            HIGH) echo "TRIVY_SEV=HIGH,CRITICAL" >> $GITHUB_ENV ;;
+            MEDIUM) echo "TRIVY_SEV=MEDIUM,HIGH,CRITICAL" >> $GITHUB_ENV ;;
+            *) echo "TRIVY_SEV=LOW,MEDIUM,HIGH,CRITICAL" >> $GITHUB_ENV ;;
+          esac
+
+      - name: Trivy JSON report
+        run: |
+          mkdir -p reports
+          docker run --rm -v "$PWD:/work" aquasec/trivy:latest fs --scanners vuln,misconfig --severity ${{ env.TRIVY_SEV }} --exit-code 0 --offline-scan --skip-dirs target --format json --output /work/reports/trivy-deps.json /work/${{ inputs.app-path }}
+
+      - name: Upload Trivy report
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-deps-report
+          path: reports/trivy-deps.json
+
+      - name: Trivy SARIF report
+        run: |
+          docker run --rm -v "$PWD:/work" aquasec/trivy:latest fs --scanners vuln,misconfig --severity ${{ env.TRIVY_SEV }} --exit-code 0 --offline-scan --skip-dirs target --format sarif --output /work/reports/trivy-deps.sarif /work/${{ inputs.app-path }}
+
+      - name: Upload Trivy SARIF to Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: reports/trivy-deps.sarif
+          category: trivy-deps
+
+      - name: Run Trivy (gate)
+        run: docker run --rm -v "$PWD:/work" aquasec/trivy:latest fs --scanners vuln,misconfig --severity ${{ env.TRIVY_SEV }} --exit-code 1 --offline-scan --skip-dirs target /work/${{ inputs.app-path }}
 
   dockerfile-lint:
     name: Dockerfile (Hadolint)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Run Hadolint
+      - name: Hadolint JSON report
+        run: |
+          mkdir -p reports
+          docker run --rm -i hadolint/hadolint hadolint --format json - < ${{ inputs.app-path }}/Dockerfile > reports/hadolint.json || true
+
+      - name: Upload Hadolint report
+        uses: actions/upload-artifact@v4
+        with:
+          name: hadolint-report
+          path: reports/hadolint.json
+
+      - name: Hadolint SARIF report
+        run: |
+          docker run --rm -i hadolint/hadolint hadolint --format sarif - < ${{ inputs.app-path }}/Dockerfile > reports/hadolint.sarif || true
+
+      - name: Upload Hadolint SARIF to Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: reports/hadolint.sarif
+          category: hadolint
+
+      - name: Run Hadolint (gate)
         run: docker run --rm -i hadolint/hadolint hadolint --failure-threshold warning - < ${{ inputs.app-path }}/Dockerfile
 
   build-and-sign:
@@ -67,8 +161,7 @@ jobs:
       - name: Set image tags
         run: |
           REPO_LOWER=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')
-          echo "IMAGE_TAG=ghcr.io/$REPO_LOWER/${{ inputs.image-name }}:latest" >> $GITHUB_ENV
-          echo "IMAGE_TAG_SHA=ghcr.io/$REPO_LOWER/${{ inputs.image-name }}:${{ github.sha }}" >> $GITHUB_ENV
+          echo "IMAGE_TAG=ghcr.io/$REPO_LOWER/${{ inputs.image-name }}:${{ github.sha }}" >> $GITHUB_ENV
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -82,7 +175,28 @@ jobs:
           load: true
           tags: |
             ${{ env.IMAGE_TAG }}
-            ${{ env.IMAGE_TAG_SHA }}
+
+      - name: Grype JSON report
+        run: |
+          mkdir -p reports
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            anchore/grype:latest ${{ env.IMAGE_TAG }} -o json > reports/grype.json
+
+      - name: Upload Grype report
+        uses: actions/upload-artifact@v4
+        with:
+          name: grype-report
+          path: reports/grype.json
+
+      - name: Grype SARIF report
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock anchore/grype:latest ${{ env.IMAGE_TAG }} -o sarif > reports/grype.sarif
+
+      - name: Upload Grype SARIF to Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: reports/grype.sarif
+          category: grype
 
       - name: Scan Local Image (Grype)
         run: |
@@ -99,7 +213,6 @@ jobs:
       - name: Push Docker Images
         run: |
           docker push ${{ env.IMAGE_TAG }}
-          docker push ${{ env.IMAGE_TAG_SHA }}
 
       - name: Get Image Digest
         run: |
@@ -121,3 +234,17 @@ jobs:
 
       - name: Attach SBOM as attestation
         run: cosign attest --yes --predicate sbom.spdx.json --type spdxjson ${{ env.DIGEST }}
+
+      - name: Verify image signature
+        run: |
+          cosign verify \
+            --certificate-identity-regexp "^https://github.com/${{ github.repository }}/" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            ${{ env.DIGEST }}
+
+      - name: Verify SBOM attestation
+        run: |
+          cosign verify-attestation --type spdxjson \
+            --certificate-identity-regexp "^https://github.com/${{ github.repository }}/" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            ${{ env.DIGEST }} > /dev/null
