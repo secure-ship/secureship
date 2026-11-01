@@ -17,6 +17,26 @@ on:
         required: false
         default: "main"
         type: string
+      run-gitleaks:
+        required: false
+        default: true
+        type: boolean
+      run-semgrep:
+        required: false
+        default: true
+        type: boolean
+      run-trivy:
+        required: false
+        default: true
+        type: boolean
+      run-hadolint:
+        required: false
+        default: true
+        type: boolean
+      run-grype:
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: read
@@ -28,6 +48,7 @@ jobs:
   secrets-scan:
     name: Secrets (Gitleaks)
     runs-on: ubuntu-latest
+    if: ${{ inputs.run-gitleaks }}
     steps:
       - uses: actions/checkout@v4
       - name: Gitleaks JSON report
@@ -57,6 +78,7 @@ jobs:
   sast:
     name: SAST (Semgrep)
     runs-on: ubuntu-latest
+    if: ${{ inputs.run-semgrep }}
     steps:
       - uses: actions/checkout@v4
       - name: Semgrep JSON report
@@ -86,6 +108,7 @@ jobs:
   dependency-scan:
     name: Dependencies (Trivy)
     runs-on: ubuntu-latest
+    if: ${{ inputs.run-trivy }}
     steps:
       - uses: actions/checkout@v4
       - name: Map severity cutoff for Trivy
@@ -124,6 +147,7 @@ jobs:
   dockerfile-lint:
     name: Dockerfile (Hadolint)
     runs-on: ubuntu-latest
+    if: ${{ inputs.run-hadolint }}
     steps:
       - uses: actions/checkout@v4
       - name: Hadolint JSON report
@@ -153,7 +177,7 @@ jobs:
   build-and-sign:
     name: Build, SBOM & Sign
     runs-on: ubuntu-latest
-    if: github.ref_name == inputs.build-branch
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && github.ref_name == inputs.build-branch }}
     needs: [secrets-scan, sast, dependency-scan, dockerfile-lint]
     steps:
       - uses: actions/checkout@v4
