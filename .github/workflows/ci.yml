@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   security-and-build:
-    uses: ./.github/workflows/secureship-pipeline.yml
+    uses: secure-ship/secureship/.github/workflows/secureship-pipeline.yml@v1.0.0
     with:
       app-path: "app/notes-api"
       image-name: "notes-api"
