@@ -6,17 +6,28 @@ on:
   pull_request:
   workflow_dispatch:
 
-permissions:
-  contents: read
-  packages: write
-  id-token: write
-  security-events: write
-
 jobs:
   security-and-build:
-    uses: secure-ship/secureship/.github/workflows/secureship-pipeline.yml@v1.0.1
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      security-events: write
+    uses: secure-ship/secureship/.github/workflows/secureship-pipeline.yml@v1.1.0
     with:
       app-path: "app/notes-api"
       image-name: "notes-api"
       severity-cutoff: "HIGH"
       build-branch: "fixed"
+
+  deploy:
+    needs: security-and-build
+    permissions:
+      contents: write
+    uses: secure-ship/secureship/.github/workflows/secureship-deploy.yml@v1.1.0
+    with:
+      built: ${{ needs.security-and-build.outputs.built }}
+      gitops-branch: gitops
+      gitops-file: notes/notes-api.yaml
+      image: ghcr.io/secure-ship/secureship/notes-api
+      tag: ${{ needs.security-and-build.outputs.image-tag }}
