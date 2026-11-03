@@ -21,7 +21,7 @@ spec:
         runAsGroup: 10001
       containers:
       - name: notes-api
-        image: ghcr.io/secure-ship/secureship/notes-api:431c1dde6ba5772ace422788270047507290b0b1
+        image: ghcr.io/secure-ship/secureship/notes-api:4b022a9f036adcecba8a06891e070ad4930e0562
         ports:
         - containerPort: 8080
         env:
