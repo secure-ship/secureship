@@ -2,6 +2,13 @@ name: secureship-pipeline
 
 on:
   workflow_call:
+    outputs:
+      built:
+        description: "true if the image was built, signed and pushed"
+        value: ${{ jobs.build-and-sign.outputs.built }}
+      image-tag:
+        description: "the image tag (commit SHA) that was pushed"
+        value: ${{ jobs.build-and-sign.outputs.image-tag }}
     inputs:
       app-path:
         required: false
@@ -237,6 +244,9 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && github.ref_name == needs.config.outputs.build-branch }}
     needs: [config, secrets-scan, sast, dependency-scan, dockerfile-lint]
+    outputs:
+      built: ${{ steps.done.outputs.built }}
+      image-tag: ${{ steps.done.outputs.image-tag }}
     steps:
       - uses: actions/checkout@v4
 
@@ -335,3 +345,9 @@ jobs:
             --certificate-identity-regexp "^https://github.com/secure-ship/secureship/.github/workflows/secureship-pipeline.yml@refs/(tags|heads)/" \
             --certificate-oidc-issuer https://token.actions.githubusercontent.com \
             ${{ env.DIGEST }} > /dev/null
+
+      - name: Mark build complete
+        id: done
+        run: |
+          echo "built=true" >> "$GITHUB_OUTPUT"
+          echo "image-tag=${{ github.sha }}" >> "$GITHUB_OUTPUT"
