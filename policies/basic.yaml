@@ -3,7 +3,7 @@ kind: ClusterPolicy
 metadata:
   name: require-non-root
 spec:
-  validationFailureAction: Audit
+  validationFailureAction: Enforce
   background: true
   rules:
   - name: check-run-as-non-root
@@ -24,7 +24,7 @@ kind: ClusterPolicy
 metadata:
   name: require-limits
 spec:
-  validationFailureAction: Audit
+  validationFailureAction: Enforce
   background: true
   rules:
   - name: check-resource-limits
@@ -48,7 +48,7 @@ kind: ClusterPolicy
 metadata:
   name: disallow-latest-tag
 spec:
-  validationFailureAction: Audit
+  validationFailureAction: Enforce
   background: true
   rules:
   - name: require-image-tag
@@ -81,7 +81,7 @@ kind: ClusterPolicy
 metadata:
   name: require-readonly-rootfs
 spec:
-  validationFailureAction: Audit
+  validationFailureAction: Enforce
   background: true
   rules:
   - name: check-readonly-rootfs
