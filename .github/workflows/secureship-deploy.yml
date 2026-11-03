@@ -1,0 +1,60 @@
+name: secureship-deploy
+
+on:
+  workflow_call:
+    inputs:
+      built:
+        required: true
+        type: string
+      gitops-branch:
+        required: true
+        type: string
+      gitops-file:
+        required: true
+        type: string
+      image:
+        required: true
+        type: string
+      tag:
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  update-gitops:
+    name: Update image tag in GitOps branch
+    runs-on: ubuntu-latest
+    if: ${{ inputs.built == 'true' }}
+    concurrency:
+      group: gitops-${{ inputs.gitops-branch }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.gitops-branch }}
+
+      - name: Replace image tag
+        env:
+          IMAGE: ${{ inputs.image }}
+          TAG: ${{ inputs.tag }}
+          FILE: ${{ inputs.gitops-file }}
+        run: |
+          sed -i -E "s#(image: ${IMAGE}):[^[:space:]]+#\1:${TAG}#" "$FILE"
+          git diff -- "$FILE"
+
+      - name: Commit and push
+        env:
+          TAG: ${{ inputs.tag }}
+          BRANCH: ${{ inputs.gitops-branch }}
+        run: |
+          if git diff --quiet; then
+            echo "Tag already up to date, nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "deploy: update image tag to ${TAG}"
+          git pull --rebase origin "$BRANCH"
+          git push origin "HEAD:$BRANCH"
